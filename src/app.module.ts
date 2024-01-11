@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import configuration, { dbConfig } from '@src/config/config';
 import { ConfigModule } from '@nestjs/config';
+import { BoardModule } from './board/board.mdule';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ConfigModule } from '@nestjs/config';
       entities: [],
       synchronize: false,
     }),
+    BoardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
