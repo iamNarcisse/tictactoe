@@ -34,8 +34,15 @@ export class BoardService {
   async joinBoard(params: JoinBoardParams) {
     try {
       const room = params.room;
+      let result: any;
+      try {
+        result = await redis.hget('rooms', room);
+      } catch (error) {
+        console.error(error);
+        throw new BadRequestException('Invalid coode');
+      }
 
-      const result: any = await redis.hget('rooms', room);
+      console.log(result);
 
       if (!result) {
         throw new BadRequestException('Provided code does not exist');
