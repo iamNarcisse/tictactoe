@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import configuration, { dbConfig } from '@src/config/config';
 import { ConfigModule } from '@nestjs/config';
 import { BoardModule } from './board/board.mdule';
+import { EventModule } from './event/event.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { BoardModule } from './board/board.mdule';
       synchronize: false,
     }),
     BoardModule,
+    EventModule,
   ],
   controllers: [AppController],
   providers: [AppService],
