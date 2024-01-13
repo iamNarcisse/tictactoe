@@ -9,7 +9,8 @@ import {
 } from '@nestjs/websockets';
 import { initRedis } from '@src/config/redis';
 import { generateRoom } from '@src/util';
-import { Redis } from '@upstash/redis';
+import { Redis } from 'ioredis';
+
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Server, Socket } from 'socket.io';
@@ -85,8 +86,6 @@ export class EventsGateway {
     };
 
     try {
-      console.log(data, 'DATA FROM USER');
-
       // Retrieve room information from cache
       const result: any = await this.redis.hget('rooms', room);
 
@@ -94,13 +93,13 @@ export class EventsGateway {
         throw new WsException('Provided code does not exist');
       }
 
-      console.log(result?.creator, 'Creator is here');
+      const redisData = JSON.parse(result as string);
 
-      const players = result.players;
+      const players = redisData.players;
 
       await this.redis.hset('rooms', {
         [room]: JSON.stringify({
-          ...result,
+          ...redisData,
           players: players.push(socketID),
           isRoomFull: true,
         }),

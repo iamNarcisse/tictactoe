@@ -12,7 +12,8 @@ import { CreateBoardParams } from './dto/create';
 import { EventsGateway } from '@src/event/event.gateway';
 import { JoinBoardParams } from './dto/join';
 import { initRedis } from '@src/config/redis';
-import { Redis } from '@upstash/redis';
+import { Redis } from 'ioredis';
+// import { Redis } from '@upstash/redis';
 
 @Injectable()
 export class BoardService {
@@ -46,14 +47,14 @@ export class BoardService {
         throw new BadRequestException('Invalid coode');
       }
 
-      console.log(result);
-
       if (!result) {
         throw new BadRequestException('Provided code does not exist');
       }
 
-      // console.log('Players', players);
-      if (result.isRoomFull) {
+      const data = JSON.parse(result as string);
+
+      console.log('data', data);
+      if (data.isRoomFull) {
         throw new UnprocessableEntityException('Max number of players reached');
       }
 
