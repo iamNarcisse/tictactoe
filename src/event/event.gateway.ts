@@ -7,10 +7,8 @@ import {
   WsException,
   WsResponse,
 } from '@nestjs/websockets';
-import { initRedis } from '@src/config/redis';
+import { redis } from '@src/config/redis';
 import { generateRoom } from '@src/util';
-import { Redis } from 'ioredis';
-
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Server, Socket } from 'socket.io';
@@ -25,10 +23,8 @@ export class EventsGateway {
   server: Server;
   sids: Map<string, string>;
 
-  redis: Redis;
   constructor() {
     this.sids = new Map();
-    this.redis = initRedis();
   }
 
   @SubscribeMessage('events')
@@ -53,7 +49,7 @@ export class EventsGateway {
 
     try {
       console.log(data);
-      await this.redis.hset('rooms', {
+      await redis.hset('rooms', {
         [room]: JSON.stringify({
           creator: socketID,
           players: [socketID],
@@ -87,7 +83,7 @@ export class EventsGateway {
 
     try {
       // Retrieve room information from cache
-      const result: any = await this.redis.hget('rooms', room);
+      const result: any = await redis.hget('rooms', room);
 
       if (!result) {
         throw new WsException('Provided code does not exist');
@@ -97,7 +93,7 @@ export class EventsGateway {
 
       const players = redisData.players;
 
-      await this.redis.hset('rooms', {
+      await redis.hset('rooms', {
         [room]: JSON.stringify({
           ...redisData,
           players: players.push(socketID),
