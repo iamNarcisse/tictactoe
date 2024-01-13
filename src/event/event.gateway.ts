@@ -49,20 +49,23 @@ export class EventsGateway {
       socketID,
       room,
     };
-    console.log(data);
 
-    await this.redis.hset('rooms', {
-      [room]: JSON.stringify({
-        creator: socketID,
-        players: [socketID],
-        isRoomFull: false,
-      }),
-    });
+    try {
+      console.log(data);
+      await this.redis.hset('rooms', {
+        [room]: JSON.stringify({
+          creator: socketID,
+          players: [socketID],
+          isRoomFull: false,
+        }),
+      });
+      this.sids.set(socketID, room);
+      socket.join(room);
+      this.server.in(room).emit('roomCreated', payload);
+    } catch (error) {
+      throw new WsException('Provided code does not exist');
+    }
 
-    this.sids.set(socketID, room);
-    socket.join(room);
-
-    this.server.in(room).emit('roomCreated', payload);
     return undefined;
   }
 
@@ -81,30 +84,34 @@ export class EventsGateway {
       guestSocketID: socketID,
     };
 
-    console.log(data, 'DATA FROM USER');
+    try {
+      console.log(data, 'DATA FROM USER');
 
-    // Retrieve room information from cache
-    const result: any = await this.redis.hget('rooms', room);
+      // Retrieve room information from cache
+      const result: any = await this.redis.hget('rooms', room);
 
-    if (!result) {
+      if (!result) {
+        throw new WsException('Provided code does not exist');
+      }
+
+      console.log(result?.creator, 'Creator is here');
+
+      const players = result.players;
+
+      await this.redis.hset('rooms', {
+        [room]: JSON.stringify({
+          ...result,
+          players: players.push(socketID),
+          isRoomFull: true,
+        }),
+      });
+
+      this.server.in(data.room).emit('roomateJoined', payload);
+
+      this.sids.set(socketID, data.room);
+    } catch (error) {
       throw new WsException('Provided code does not exist');
     }
-
-    console.log(result?.creator, 'Creator is here');
-
-    const players = result.players;
-
-    await this.redis.hset('rooms', {
-      [room]: JSON.stringify({
-        ...result,
-        players: players.push(socketID),
-        isRoomFull: true,
-      }),
-    });
-
-    this.server.in(data.room).emit('roomateJoined', payload);
-
-    this.sids.set(socketID, data.room);
 
     return undefined;
   }
