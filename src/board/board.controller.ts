@@ -7,7 +7,6 @@ import { JoinBoardParams } from './dto/join';
 @Controller('board')
 export class BoardController {
   constructor(private readonly service: BoardService) {}
-
   @Post()
   async addBank(
     @Body() params: CreateBoardParams,
