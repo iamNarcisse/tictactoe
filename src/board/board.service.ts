@@ -42,7 +42,7 @@ export class BoardService {
       try {
         result = await this.redis.hget('rooms', room);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         throw new BadRequestException('Invalid coode');
       }
 
