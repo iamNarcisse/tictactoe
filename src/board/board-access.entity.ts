@@ -2,32 +2,37 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { BoardAccess } from './board-access.entity';
+import { Boards } from './board.entity';
 
-@Entity({ name: 'boards' })
-export class Boards {
+@Entity({ name: 'board_accesses' })
+export class BoardAccess {
   @PrimaryGeneratedColumn('uuid')
   @Column({ unique: true, primary: true })
-  id: string;
+  id?: string;
+
+  @Column({ type: 'uuid' })
+  board_id?: string;
 
   @Column({ type: 'text' })
   user_id: string;
 
   @Column({ type: 'text' })
-  short_code: string;
+  role: string;
 
-  @OneToMany(() => BoardAccess, (access) => access.board, { cascade: true })
-  board_access: BoardAccess[];
+  @ManyToOne(() => Boards, (board) => board.board_access)
+  @JoinColumn({ name: 'board_id' })
+  board?: Boards;
 
   @CreateDateColumn()
   @Column({ type: 'timestamptz' })
-  created_at: Date;
+  created_at?: Date;
 
   @UpdateDateColumn()
   @Column({ type: 'timestamptz' })
-  updated_at: Date;
+  updated_at?: Date;
 }

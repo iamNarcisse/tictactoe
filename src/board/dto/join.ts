@@ -8,4 +8,7 @@ export class JoinBoardParams extends Boards {
 
   @IsString()
   socketID: string;
+
+  @IsString()
+  sessionID: string;
 }

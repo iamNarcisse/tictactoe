@@ -7,8 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { redis } from '@src/config/redis';
-import { EventsGateway } from '@src/event/event.gateway';
+import { RoomRedisParams } from '@src/types';
+import { generateRoom } from '@src/util';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { BoardAccess } from './board-access.entity';
 import { Boards } from './board.entity';
 import { CreateBoardParams } from './dto/create';
 import { JoinBoardParams } from './dto/join';
@@ -20,14 +23,52 @@ export class BoardService {
   constructor(
     @InjectRepository(Boards)
     private readonly repo: Repository<Boards>,
-    private readonly socketSrv: EventsGateway,
+
+    @InjectRepository(BoardAccess)
+    private readonly accessRepo: Repository<BoardAccess>,
   ) {}
 
   async createBoard(params: CreateBoardParams) {
     try {
-      const response = await this.repo.save(params);
-      return response;
+      const room = generateRoom();
+      const boardID = uuidv4();
+      const sessionID = uuidv4(); // used in place of user id. Since authentication is not yet ready
+
+      params.user_id = sessionID;
+      // console.log(params, 'PARAM OOOOO =>');
+
+      const accessPayload = {
+        board_id: boardID,
+        user_id: sessionID,
+        role: 'owner',
+      };
+
+      const payload = {
+        short_code: room,
+        user_id: sessionID,
+        id: boardID,
+        board_access: [accessPayload],
+      };
+
+      await this.repo.save(payload);
+
+      const roomRedisParams: RoomRedisParams = {
+        creator: sessionID,
+        players: [sessionID],
+        isRoomFull: false,
+        boardID: boardID,
+      };
+
+      await redis.hset('rooms', {
+        [room]: JSON.stringify(roomRedisParams),
+      });
+
+      return {
+        room,
+        sessionID,
+      };
     } catch (err) {
+      console.log(err);
       throw new InternalServerErrorException();
     }
   }
@@ -47,14 +88,36 @@ export class BoardService {
         throw new BadRequestException('Provided code does not exist');
       }
 
-      const data = JSON.parse(result as string);
+      const redisData = JSON.parse(result as string) as RoomRedisParams;
 
-      console.log('data', data);
-      if (data.isRoomFull) {
+      if (redisData.isRoomFull) {
         throw new UnprocessableEntityException('Max number of players reached');
       }
 
-      return { room };
+      const sessionID = uuidv4(); // used in place of user id. Since authentication is not yet ready
+
+      const payload = {
+        board_id: redisData.boardID,
+        role: 'collaborator',
+        user_id: sessionID,
+      };
+
+      await this.accessRepo.save(payload);
+
+      const oldPlayers = redisData.players;
+      const currentPlayers: string[] = [...oldPlayers, sessionID];
+
+      const roomRedisParams: RoomRedisParams = {
+        ...redisData,
+        players: currentPlayers,
+        isRoomFull: true,
+      };
+
+      await redis.hset('rooms', {
+        [room]: JSON.stringify(roomRedisParams),
+      });
+
+      return { room, sessionID };
     } catch (err) {
       throw err;
     }

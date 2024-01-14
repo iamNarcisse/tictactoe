@@ -8,7 +8,7 @@ import {
   WsResponse,
 } from '@nestjs/websockets';
 import { redis } from '@src/config/redis';
-import { generateRoom } from '@src/util';
+import { RoomRedisParams } from '@src/types';
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Server, Socket } from 'socket.io';
@@ -38,29 +38,30 @@ export class EventsGateway {
   @SubscribeMessage('createRoom')
   async createRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: any,
+    @MessageBody() data: { sessionID: string; room: string },
   ): Promise<WsResponse<unknown>> {
-    const room = generateRoom();
+    const room = data.room;
     const socketID = socket.id;
+    const sessionID = data.sessionID;
+
+    if (!room || !sessionID) {
+      throw new WsException('You are not allowed to to perform this operation');
+    }
+
+    // console.log('SESSION DATA', data);
+
     const payload = {
       socketID,
       room,
+      sessionID,
     };
 
     try {
-      console.log(data);
-      await redis.hset('rooms', {
-        [room]: JSON.stringify({
-          creator: socketID,
-          players: [socketID],
-          isRoomFull: false,
-        }),
-      });
       this.sids.set(socketID, room);
       socket.join(room);
       this.server.in(room).emit('roomCreated', payload);
     } catch (error) {
-      throw new WsException('Provided code does not exist');
+      throw error;
     }
 
     return undefined;
@@ -69,19 +70,22 @@ export class EventsGateway {
   @SubscribeMessage('joinRoom')
   async joinRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: { room: string },
+    @MessageBody() data: { room: string; sessionID: string },
   ): Promise<WsResponse<unknown>> {
-    const room = data.room;
-    const socketID = socket.id;
-    socket.join(data.room);
-
-    const payload = {
-      room: data.room,
-      socketID: socketID,
-      guestSocketID: socketID,
-    };
-
     try {
+      const room = data.room;
+      const socketID = socket.id;
+
+      this.sids.set(socketID, data.room);
+      socket.join(data.room);
+
+      const payload = {
+        room: data.room,
+        socketID: socketID,
+        guestSocketID: socketID,
+        sessionID: data.sessionID,
+      };
+
       // Retrieve room information from cache
       const result: any = await redis.hget('rooms', room);
 
@@ -89,21 +93,16 @@ export class EventsGateway {
         throw new WsException('Provided code does not exist');
       }
 
-      const redisData = JSON.parse(result as string);
+      const redisData = JSON.parse(result as string) as RoomRedisParams;
 
       const players = redisData.players;
 
-      await redis.hset('rooms', {
-        [room]: JSON.stringify({
-          ...redisData,
-          players: players.push(socketID),
-          isRoomFull: true,
-        }),
-      });
+      // Extra check to make sure
+      if (!players.includes(data.sessionID)) {
+        throw new WsException('You are not allowed to connect to this board');
+      }
 
       this.server.in(data.room).emit('roomateJoined', payload);
-
-      this.sids.set(socketID, data.room);
     } catch (error) {
       throw new WsException('Provided code does not exist');
     }
