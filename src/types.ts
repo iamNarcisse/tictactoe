@@ -4,3 +4,12 @@ export type RoomRedisParams = {
   isRoomFull: boolean;
   boardID: string;
 };
+
+export enum PlayerRole {
+  OWNER = 'owner',
+  COLLABORATOR = 'collaborator',
+}
+
+export enum RedisKey {
+  ROOMS = 'room',
+}

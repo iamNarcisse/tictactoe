@@ -8,7 +8,7 @@ import {
   WsResponse,
 } from '@nestjs/websockets';
 import { redis } from '@src/config/redis';
-import { RoomRedisParams } from '@src/types';
+import { RedisKey, RoomRedisParams } from '@src/types';
 import { Observable, from } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Server, Socket } from 'socket.io';
@@ -87,7 +87,7 @@ export class EventsGateway {
       };
 
       // Retrieve room information from cache
-      const result: any = await redis.hget('rooms', room);
+      const result: any = await redis.hget(RedisKey.ROOMS, room);
 
       if (!result) {
         throw new WsException('Provided code does not exist');

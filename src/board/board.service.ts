@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { redis } from '@src/config/redis';
-import { RoomRedisParams } from '@src/types';
+import { PlayerRole, RedisKey, RoomRedisParams } from '@src/types';
 import { generateRoom } from '@src/util';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,7 +40,7 @@ export class BoardService {
       const accessPayload = {
         board_id: boardID,
         user_id: sessionID,
-        role: 'owner',
+        role: PlayerRole.OWNER,
       };
 
       const payload = {
@@ -59,7 +59,7 @@ export class BoardService {
         boardID: boardID,
       };
 
-      await redis.hset('rooms', {
+      await redis.hset(RedisKey.ROOMS, {
         [room]: JSON.stringify(roomRedisParams),
       });
 
@@ -78,7 +78,7 @@ export class BoardService {
       const room = params.room;
       let result: any;
       try {
-        result = await redis.hget('rooms', room);
+        result = await redis.hget(RedisKey.ROOMS, room);
       } catch (error) {
         // console.error(error);
         throw new BadRequestException('Invalid coode');
@@ -98,7 +98,7 @@ export class BoardService {
 
       const payload = {
         board_id: redisData.boardID,
-        role: 'collaborator',
+        role: PlayerRole.COLLABORATOR,
         user_id: sessionID,
       };
 
@@ -113,7 +113,7 @@ export class BoardService {
         isRoomFull: true,
       };
 
-      await redis.hset('rooms', {
+      await redis.hset(RedisKey.ROOMS, {
         [room]: JSON.stringify(roomRedisParams),
       });
 
