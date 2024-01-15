@@ -15,6 +15,7 @@ import { BoardAccess } from './board-access.entity';
 import { Boards } from './board.entity';
 import { CreateBoardParams } from './dto/create';
 import { JoinBoardParams } from './dto/join';
+import { PatchBoardParams } from './dto/patch';
 
 @Injectable()
 export class BoardService {
@@ -116,6 +117,60 @@ export class BoardService {
       await redis.hset(RedisKey.ROOMS, {
         [room]: JSON.stringify(roomRedisParams),
       });
+
+      return { room, sessionID };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  async updateBoard(params: PatchBoardParams) {
+    try {
+      const room = params.code;
+      const sessionID = params.sessionID;
+
+      let result: any;
+      try {
+        result = await redis.hget(RedisKey.ROOMS, room);
+      } catch (error) {
+        // console.error(error);
+        throw new BadRequestException('Invalid coode');
+      }
+
+      if (!result) {
+        throw new BadRequestException('Provided code does not exist');
+      }
+
+      const redisData = JSON.parse(result as string) as RoomRedisParams;
+
+      if (!redisData.players.includes(sessionID)) {
+        throw new BadRequestException(
+          'You are not allowed to to perform this operation',
+        );
+      }
+
+      if (redisData.creator !== params.sessionID) {
+        // Do nothing
+        return {};
+      }
+
+      const getWinnerID = (symbol?: string): string | undefined => {
+        if (!symbol) return undefined;
+
+        if (symbol.toLocaleLowerCase() === 'x') {
+          return redisData.creator;
+        }
+
+        const id = redisData.players.find((id) => id === sessionID);
+        return id;
+      };
+
+      const updatePayload: Partial<Boards> = {
+        status: params.status,
+        winner_id: getWinnerID(params.winner_symbol),
+      };
+
+      await this.repo.update({ short_code: room }, updatePayload);
 
       return { room, sessionID };
     } catch (err) {

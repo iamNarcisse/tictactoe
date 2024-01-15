@@ -1,7 +1,8 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Patch, Param } from '@nestjs/common';
 import { BoardService } from './board.service';
 import { CreateBoardParams } from './dto/create';
 import { JoinBoardParams } from './dto/join';
+import { PatchBoardParams } from './dto/patch';
 
 @Controller('board')
 export class BoardController {
@@ -15,6 +16,16 @@ export class BoardController {
   @Post('join')
   async joinBoard(@Body() params: JoinBoardParams) {
     const resource = await this.service.joinBoard(params);
+    return resource;
+  }
+
+  @Patch(':code')
+  async manageBoard(
+    @Body() params: PatchBoardParams,
+    @Param('code') code: string,
+  ) {
+    params.code = code;
+    const resource = await this.service.updateBoard(params);
     return resource;
   }
 }

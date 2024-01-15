@@ -14,8 +14,14 @@ export class Boards {
   @Column({ unique: true, primary: true })
   id: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'uuid' })
   user_id: string;
+
+  @Column({ type: 'uuid' })
+  winner_id: string;
+
+  @Column({ type: 'text' })
+  status: string;
 
   @Column({ type: 'text' })
   short_code: string;
